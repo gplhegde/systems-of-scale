@@ -1,0 +1,4 @@
+django>=6.0.7
+djangorestframework>=3.17.1
+psycopg2-binary>=2.9.12
+confluent-kafka>=2.15.0
