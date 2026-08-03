@@ -10,6 +10,7 @@ from .caching import (
     set_cached_product,
     set_cached_product_list,
 )
+from .events import publish_order_event
 from .models import Customer, Order, OrderItem, Product
 from .serializers import (
     CustomerSerializer,
@@ -87,5 +88,6 @@ class OrderViewSet(
 
         serializer = OrderCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        order = serializer.save()
+        publish_order_event(order, "order_created")
         return Response(serializer.data, status=status.HTTP_201_CREATED)

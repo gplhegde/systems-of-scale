@@ -1,0 +1,13 @@
+# Ignore files that shouldn't be included in the Docker image
+__pycache__/
+*.pyc
+*.pyo
+.env
+.git
+.gitignore
+*.md
+.venv/
+venv/
+*.log
+db.sqlite3
+staticfiles/

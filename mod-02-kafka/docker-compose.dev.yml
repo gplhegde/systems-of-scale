@@ -1,0 +1,20 @@
+services:
+  web:
+    environment:
+      DJANGO_SETTINGS_MODULE: fastcommerce.settings.development
+      DEBUG: "True"
+    volumes:
+      - ./fastcommerce:/app # Mount source code — changes reflected without rebuild
+    ports:
+      - "8000:8000" # Direct access to Django (bypass Nginx)
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+
+  db:
+    ports:
+      - "5432:5432" # Expose Postgres for local DB clients (TablePlus, etc.)
+
+  redis:
+    ports:
+      - "6379:6379" # Expose Redis for local inspection
