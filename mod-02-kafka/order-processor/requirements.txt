@@ -1,2 +1,0 @@
-psycopg2-binary==2.9.12
-confluent-kafka==2.5.0
