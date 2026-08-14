@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fastcommerce-config
+  namespace: fastcommerce
+
+data:
+  # This is a simple configmap for the Django API service. It contains
+  # environment variables that are injected into the container at runtime.
+  # Django settings
+  DJANGO_SETTINGS_MODULE: "fastcommerce.settings"
+  DEBUG: "False"
+  ALLOWED_HOSTS: "*"
+
+  # Database connection — hostname is the Postgres Service name.
+  # Inside the cluster, Services are reachable by their name.
+  # "postgres-service" resolves to the ClusterIP of the Postgres Service.
+  POSTGRES_HOST: "postgres-service"
+  POSTGRES_DB: "fastdb"
+  POSTGRES_PORT: "5432"
+
+  # Redis — same pattern
+  REDIS_URL: "redis://redis-service:6379/0"

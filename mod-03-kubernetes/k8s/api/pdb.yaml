@@ -1,0 +1,20 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: fastcommerce-api-pdb
+  namespace: fastcommerce
+spec:
+  # minAvailable: the minimum number of pods that must be available
+  # during a voluntary disruption.
+  # Can be an absolute number (2) or a percentage ("66%").
+  # With 3 replicas, minAvailable: 2 means at most 1 pod can be
+  # evicted at a time.
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: fastcommerce-api
+
+  # Alternative: maxUnavailable instead of minAvailable
+  # maxUnavailable: 1  ← at most 1 pod can be down at any time
+  # Use minAvailable when you care about absolute availability.
+  # Use maxUnavailable when you care about the disruption rate.

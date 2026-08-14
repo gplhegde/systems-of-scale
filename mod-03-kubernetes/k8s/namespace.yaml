@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fastcommerce
+  labels:
+    # Labels on the namespace itself — useful for network policies later
+    project: fastcommerce

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: fastcommerce
+spec:
+  # ClusterIP: only reachable from inside the cluster.
+  # Correct for Postgres — it should never be accessible from outside.
+  type: ClusterIP
+  selector:
+    # Routes traffic to any pod with label app=postgres.
+    # Matches the labels in the Deployment's pod template above.
+    app: postgres
+  ports:
+    - port: 5432 # port the Service listens on (used by clients)
+      targetPort: 5432 # port on the pod to forward traffic to

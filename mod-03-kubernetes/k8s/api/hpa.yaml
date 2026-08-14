@@ -1,0 +1,43 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: fastcommerce-api-hpa
+  namespace: fastcommerce
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: fastcommerce-api
+  minReplicas: 2 # never scale below 2 — minimum availability
+  maxReplicas: 10 # never scale above 10 — cost ceiling
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          # Scale up when average CPU across all pods exceeds 70% of their request.
+          # With request=100m, this triggers at ~70m average.
+          # Scale down when average drops below 70% (with a cooldown period).
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleUp:
+      # Scale up aggressively — don't wait when traffic spikes
+      stabilizationWindowSeconds: 30 # wait 30s before scaling up again
+      policies:
+        - type: Pods
+          value: 2 # add at most 2 pods per scaling event
+          periodSeconds: 30
+    scaleDown:
+      # Scale down conservatively — avoid flapping
+      stabilizationWindowSeconds: 300 # wait 5 minutes before scaling down
+      policies:
+        - type: Pods
+          value: 1 # remove at most 1 pod per scaling event
+          periodSeconds: 60

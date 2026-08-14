@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fastcommerce-api
+  namespace: fastcommerce
+  annotations:
+    # Annotations are like labels but for non-identifying metadata.
+    # This one is just documentation — record why this is the replica count.
+    deployment.kubernetes.io/reason: "3 replicas for HA; matches partition count if Kafka is added"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: fastcommerce-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # maxSurge: how many extra pods above the desired count are allowed
+      # during an update. 1 means we'll temporarily have 4 pods (3 + 1).
+      # Setting this higher speeds up the rollout but uses more resources.
+      maxSurge: 1
+      # maxUnavailable: how many pods can be unavailable during an update.
+      # 0 means: never take a pod down before a new one is ready.
+      # This guarantees zero downtime at the cost of needing extra capacity
+      # (the surge pod) during the rollout.
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: fastcommerce-api
+    spec:
+      # initContainers run to completion BEFORE the main containers start.
+      # This solves the Django migration problem: we need the database
+      # schema to be up to date before the API starts serving requests.
+      # Without this, pods might start and fail on missing tables.
+      initContainers:
+        - name: run-migrations
+          image: fastcommerce-api:v1
+          imagePullPolicy: Never
+          command: ["python", "manage.py", "migrate", "--noinput"]
+          envFrom:
+            - configMapRef:
+                name: fastcommerce-config
+            - secretRef:
+                name: fastcommerce-secrets
+      containers:
+        - name: api
+          image: fastcommerce-api:v1
+          # Never: use the image already present in the node's image cache.
+          # Always: always pull from registry (default for :latest tag).
+          # IfNotPresent: pull only if not in cache (default for versioned tags).
+          # We use Never because our image is built locally into minikube.
+          imagePullPolicy: Never
+          command:
+            [
+              "gunicorn",
+              "fastcommerce.wsgi:application",
+              "--bind",
+              "0.0.0.0:8000",
+            ]
+          ports:
+            - containerPort: 8000
+          # envFrom injects ALL keys from the ConfigMap and Secret as env vars.
+          # More concise than listing each key individually when you need all of them.
+          envFrom:
+            - configMapRef:
+                name: fastcommerce-config
+            - secretRef:
+                name: fastcommerce-secrets
+          resources:
+            requests:
+              memory: "250Mi"
+              cpu: "250m"
+            limits:
+              memory: "500Mi"
+              cpu: "500m"
+
+          livenessProbe:
+            # Liveness: is the container stuck? Restart it if so.
+            # Use a lightweight endpoint that doesn't hit the database —
+            # a DB outage should not cause pod restarts (that won't fix it
+            # and will cause a thundering herd when DB recovers).
+            httpGet:
+              path: /api/health/
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 3
+
+          readinessProbe:
+            # Readiness: is the container ready to serve traffic?
+            # Pods that fail readiness are removed from the Service's
+            # endpoint list — traffic stops reaching them.
+            # This is what enables zero-downtime deploys and self-healing.
+            # Can be more thorough than liveness (hit the DB, check cache).
+            httpGet:
+              path: /api/health/
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 2
+            # successThreshold: how many consecutive successes before a
+            # previously-failing pod is marked ready again. Default is 1.
+            successThreshold: 1
+
+          # lifecycle hooks run at specific points in the container lifecycle.
+          lifecycle:
+            preStop:
+              # preStop runs BEFORE the container receives SIGTERM.
+              # This sleep gives the load balancer time to stop sending new
+              # requests to this pod before Gunicorn starts shutting down.
+              # Without this, in-flight requests may be dropped as the pod
+              # is removed from the Service endpoints.
+              exec:
+                command: ["sleep", "5"]
+
+      # terminationGracePeriodSeconds: how long Kubernetes waits after
+      # sending SIGTERM before sending SIGKILL.
+      # Must be longer than your preStop sleep + your app's shutdown time.
+      # 30s is the default. We use 60s to be safe with slow requests.
+      terminationGracePeriodSeconds: 60

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: fastcommerce
+spec:
+  # StorageClass determines what kind of storage is provisioned.
+  # "standard" is minikube's default — a hostPath volume on the VM.
+  # On cloud clusters, you'd use "gp2" (AWS), "standard" (GCP), etc.
+  storageClassName: standard
+  accessModes:
+    # ReadWriteOnce: the volume can be mounted read-write by a single node.
+    # This is correct for Postgres — only one pod should write to it.
+    # Other modes: ReadOnlyMany (multiple nodes, read-only),
+    # ReadWriteMany (multiple nodes, read-write — requires NFS or similar).
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

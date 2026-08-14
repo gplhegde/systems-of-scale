@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: fastcommerce
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:18-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: fastcommerce-config
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: fastcommerce-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: fastcommerce-secrets
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            # This is the path inside the container where Postgres stores data.
+            # Mounting the PVC here means data survives pod restarts.
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql
+          resources:
+            requests:
+              # requests: what the scheduler uses to decide pod placement.
+              # Kubernetes guarantees these resources are available on the node.
+              memory: "256Mi"
+              cpu: "250m" # 250m = 0.25 cores
+            limits:
+              # limits: the hard cap. Exceeding memory limit = OOMKill.
+              # Exceeding CPU limit = throttling (not killed).
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            # Liveness: is this container alive? If it fails, kubelet restarts
+            # the container. Use for deadlock detection — situations where the
+            # process is running but permanently stuck.
+            exec:
+              command: ["pg_isready", "-U", "fastuser", "-d", "fastdb"]
+            initialDelaySeconds: 30 # wait before first probe (startup time)
+            periodSeconds: 10 # how often to probe
+            failureThreshold: 3 # consecutive failures before restart
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc # references the PVC we created above
+

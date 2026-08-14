@@ -1,0 +1,35 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fastcommerce-ingress
+  namespace: fastcommerce
+  annotations:
+    # Tell the nginx ingress controller to use these settings.
+    # These annotations are nginx-specific — other controllers use different ones.
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    # How long to wait for a response from the upstream pod.
+    # Increase for long-running requests (reports, exports).
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+spec:
+  ingressClassName: nginx # use the nginx ingress controller
+  rules:
+    - http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-service
+                port:
+                  number: 80
+          - path: /admin
+            pathType: Prefix
+            # The backend is the Service that the Ingress routes to.
+            # The Service then routes to the pods. This is the place to route
+            # to a different Service if you want /admin to go to a or
+            # microservice
+            backend:
+              service:
+                name: api-service
+                port:
+                  number: 80
